@@ -1,158 +1,313 @@
 import axios from 'axios';
-import * as cheerio from 'cheerio';
 import { ScrapedProduct } from '@/types';
 
-// 用户代理列表
-const USER_AGENTS = [
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+// Google Custom Search API配置
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
+const GOOGLE_CX = process.env.GOOGLE_CX || '';
+const GOOGLE_COUNTRY = process.env.GOOGLE_COUNTRY || 'au';
+
+// API端点
+const GOOGLE_SEARCH_API = 'https://www.googleapis.com/customsearch/v1';
+
+// 缓存配置
+interface CacheEntry {
+  data: ScrapedProduct[];
+  timestamp: number;
+}
+
+const cache = new Map<string, CacheEntry>();
+const CACHE_EXPIRY = 5 * 60 * 1000; // 5分钟
+
+// 澳大利亚主要零售商列表
+const AUSTRALIAN_RETAILERS = [
+  'coles.com.au',
+  'woolworths.com.au',
+  'iga.com.au',
+  'bigw.com.au',
+  'kmart.com.au',
+  'target.com.au',
+  'chemistwarehouse.com.au',
+  'bunnings.com.au',
+  'jbhifi.com.au',
+  'officeworks.com.au',
+  'catch.com.au',
+  'ebay.com.au',
+  'amazon.com.au',
 ];
 
-// 随机获取User-Agent
-function getRandomUserAgent(): string {
-  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+/**
+ * 检查域名是否为澳大利亚零售商
+ */
+function isAustralianRetailer(domain: string): boolean {
+  return AUSTRALIAN_RETAILERS.some(retailer => 
+    domain.toLowerCase().includes(retailer.toLowerCase())
+  );
 }
 
-// 延迟函数
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// 价格提取正则表达式
+/**
+ * 从文本中提取价格
+ */
 function extractPrice(text: string): number | null {
-  const priceMatch = text.match(/\$?\s*(\d+\.?\d*)/);
-  if (priceMatch) {
-    return parseFloat(priceMatch[1]);
+  if (!text) return null;
+  
+  // 清理文本
+  const cleanText = text.replace(/\s+/g, ' ').trim();
+  
+  // 尝试多种价格格式
+  const patterns = [
+    /\$\s*(\d+(?:,\d{3})*(?:\.\d{2})?)/g,  // $5.50, $1,234.50
+    /AUD\s*(\d+(?:,\d{3})*(?:\.\d{2})?)/gi, // AUD 5.50
+    /(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:dollars?|aud)/gi, // 5.50 dollars
+    /price[:\s]+\$?(\d+(?:,\d{3})*(?:\.\d{2})?)/gi, // Price: $5.50
+  ];
+  
+  for (const pattern of patterns) {
+    const matches = [...cleanText.matchAll(pattern)];
+    for (const match of matches) {
+      const priceStr = match[1].replace(/,/g, '');
+      const price = parseFloat(priceStr);
+      if (!isNaN(price) && price > 0 && price < 100000) {
+        return price;
+      }
+    }
   }
+  
   return null;
 }
 
-// Coles 爬虫
-async function scrapeColes(productName: string): Promise<ScrapedProduct[]> {
-  try {
-    const searchUrl = `https://www.coles.com.au/search?q=${encodeURIComponent(productName)}`;
-    const response = await axios.get(searchUrl, {
-      headers: {
-        'User-Agent': getRandomUserAgent(),
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
-      timeout: 10000,
-    });
-
-    const $ = cheerio.load(response.data);
-    const products: ScrapedProduct[] = [];
-
-    // 注意: 实际的选择器需要根据Coles网站的真实结构调整
-    $('.product-tile, [data-testid="product-tile"]').each((_, element) => {
-      const name = $(element).find('.product-title, [data-testid="product-title"]').text().trim();
-      const priceText = $(element).find('.price, [data-testid="price"]').text().trim();
-      const price = extractPrice(priceText);
-      const url = $(element).find('a').attr('href');
-
-      if (name && price) {
-        products.push({
-          product_name: name,
-          price,
-          supplier: 'Coles',
-          url: url ? `https://www.coles.com.au${url}` : undefined,
-        });
-      }
-    });
-
-    return products;
-  } catch (error) {
-    console.error('Coles scraping error:', error);
-    return [];
+/**
+ * 从域名提取零售商名称
+ */
+function extractRetailerName(domain: string): string {
+  const cleanDomain = domain.toLowerCase().replace('www.', '').replace('.com.au', '');
+  
+  // 特殊处理一些品牌名称
+  const brandMap: Record<string, string> = {
+    'coles': 'Coles',
+    'woolworths': 'Woolworths',
+    'iga': 'IGA',
+    'bigw': 'Big W',
+    'kmart': 'Kmart',
+    'target': 'Target',
+    'chemistwarehouse': 'Chemist Warehouse',
+    'bunnings': 'Bunnings',
+    'jbhifi': 'JB Hi-Fi',
+    'officeworks': 'Officeworks',
+    'catch': 'Catch',
+    'ebay': 'eBay',
+    'amazon': 'Amazon',
+  };
+  
+  for (const [key, value] of Object.entries(brandMap)) {
+    if (cleanDomain.includes(key)) {
+      return value;
+    }
   }
+  
+  // 默认首字母大写
+  return cleanDomain.charAt(0).toUpperCase() + cleanDomain.slice(1);
 }
 
-// Woolworths 爬虫
-async function scrapeWoolworths(productName: string): Promise<ScrapedProduct[]> {
-  try {
-    const searchUrl = `https://www.woolworths.com.au/shop/search/products?searchTerm=${encodeURIComponent(productName)}`;
-    const response = await axios.get(searchUrl, {
-      headers: {
-        'User-Agent': getRandomUserAgent(),
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
-      timeout: 10000,
-    });
-
-    const $ = cheerio.load(response.data);
-    const products: ScrapedProduct[] = [];
-
-    // 注意: 实际的选择器需要根据Woolworths网站的真实结构调整
-    $('.product-tile, [data-testid="product-tile"]').each((_, element) => {
-      const name = $(element).find('.product-title, .shelfProductTile-title').text().trim();
-      const priceText = $(element).find('.price, .primary').text().trim();
-      const price = extractPrice(priceText);
-      const url = $(element).find('a').attr('href');
-
-      if (name && price) {
-        products.push({
-          product_name: name,
-          price,
-          supplier: 'Woolworths',
-          url: url ? `https://www.woolworths.com.au${url}` : undefined,
-        });
-      }
-    });
-
-    return products;
-  } catch (error) {
-    console.error('Woolworths scraping error:', error);
-    return [];
+/**
+ * 使用Google Custom Search API搜索商品
+ */
+async function searchGoogle(productName: string): Promise<ScrapedProduct[]> {
+  // 检查环境变量
+  if (!GOOGLE_API_KEY || GOOGLE_API_KEY === 'your_google_api_key_here') {
+    console.error('[Google Shopping] API Key未配置');
+    throw new Error('Google API Key未配置，请在.env.local中设置GOOGLE_API_KEY');
   }
-}
-
-// IGA 爬虫
-async function scrapeIGA(productName: string): Promise<ScrapedProduct[]> {
+  
+  if (!GOOGLE_CX || GOOGLE_CX === 'your_custom_search_engine_id_here') {
+    console.error('[Google Shopping] Custom Search Engine ID未配置');
+    throw new Error('Google CX未配置，请按照GOOGLE_SHOPPING_SETUP.md获取并配置GOOGLE_CX');
+  }
+  
   try {
-    // IGA可能需要不同的爬取策略
-    // 这里提供一个基础模板
+    console.log(`[Google Shopping] 搜索商品: ${productName}`);
+    
+    // 构建API请求
+    const params = new URLSearchParams({
+      key: GOOGLE_API_KEY,
+      cx: GOOGLE_CX,
+      q: productName,
+      gl: GOOGLE_COUNTRY, // 地理位置：澳大利亚
+      num: '10', // 返回最多10个结果
+    });
+    
+    const url = `${GOOGLE_SEARCH_API}?${params.toString()}`;
+    console.log(`[Google Shopping] API URL: ${url.substring(0, 100)}...`);
+    
+    const response = await axios.get(url, {
+      timeout: 15000,
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+    
+    const data = response.data;
+    
+    if (!data.items || data.items.length === 0) {
+      console.log('[Google Shopping] 未找到搜索结果');
+      return [];
+    }
+    
+    console.log(`[Google Shopping] 找到 ${data.items.length} 个搜索结果`);
+    
     const products: ScrapedProduct[] = [];
     
-    // 实现IGA的爬取逻辑...
-    // 由于IGA网站结构可能不同，这里留空待实际测试时填充
-
+    // 处理每个搜索结果
+    for (const item of data.items) {
+      const domain = item.displayLink || '';
+      
+      // 只保留澳大利亚零售商
+      if (!isAustralianRetailer(domain)) {
+        continue;
+      }
+      
+      // 提取商品信息
+      const title = item.title || '';
+      const snippet = item.snippet || '';
+      const link = item.link || '';
+      
+      // 尝试从多个来源提取价格
+      let price: number | null = null;
+      
+      // 1. 尝试从结构化数据中获取价格
+      if (item.pagemap && item.pagemap.offer) {
+        const offers = Array.isArray(item.pagemap.offer) ? item.pagemap.offer : [item.pagemap.offer];
+        for (const offer of offers) {
+          if (offer.price) {
+            const priceValue = parseFloat(offer.price);
+            if (!isNaN(priceValue) && priceValue > 0) {
+              price = priceValue;
+              break;
+            }
+          }
+        }
+      }
+      
+      // 2. 从标题中提取价格
+      if (!price) {
+        price = extractPrice(title);
+      }
+      
+      // 3. 从snippet中提取价格
+      if (!price) {
+        price = extractPrice(snippet);
+      }
+      
+      // 如果找到价格，添加到结果
+      if (price) {
+        const retailerName = extractRetailerName(domain);
+        
+        products.push({
+          product_name: title,
+          price: price,
+          supplier: retailerName,
+          url: link,
+        });
+        
+        console.log(`[Google Shopping] ✓ ${retailerName}: $${price.toFixed(2)}`);
+      }
+    }
+    
+    console.log(`[Google Shopping] 成功提取 ${products.length} 个有价格的商品`);
+    
     return products;
+    
   } catch (error) {
-    console.error('IGA scraping error:', error);
-    return [];
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        console.error('[Google Shopping] API错误:', error.response.status, error.response.data);
+        
+        // 处理特定错误
+        if (error.response.status === 403) {
+          throw new Error('Google API访问被拒绝，请检查API Key是否正确并已启用Custom Search API');
+        } else if (error.response.status === 429) {
+          throw new Error('API配额已用完，请稍后再试或升级配额');
+        }
+      } else {
+        console.error('[Google Shopping] 网络错误:', error.message);
+      }
+    }
+    throw error;
   }
 }
 
-// 主爬虫函数 - 聚合所有零售商
+/**
+ * 检查缓存
+ */
+function getCachedData(key: string): ScrapedProduct[] | null {
+  const cached = cache.get(key);
+  if (!cached) return null;
+  
+  const age = Date.now() - cached.timestamp;
+  if (age > CACHE_EXPIRY) {
+    cache.delete(key);
+    return null;
+  }
+  
+  console.log(`[Cache] 使用缓存数据 "${key}" (${Math.round(age / 1000)}秒前)`);
+  return cached.data;
+}
+
+/**
+ * 设置缓存
+ */
+function setCachedData(key: string, data: ScrapedProduct[]): void {
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
+/**
+ * 主爬虫函数 - 使用Google Shopping API
+ */
 export async function scrapeProduct(productName: string): Promise<ScrapedProduct[]> {
-  const allProducts: ScrapedProduct[] = [];
-
+  const cacheKey = `google_${productName.toLowerCase().trim()}`;
+  
+  // 检查缓存
+  const cached = getCachedData(cacheKey);
+  if (cached && cached.length > 0) {
+    return cached;
+  }
+  
   try {
-    // 并发爬取多个网站
-    const [colesProducts, woolworthsProducts, igaProducts] = await Promise.all([
-      scrapeColes(productName),
-      delay(1000).then(() => scrapeWoolworths(productName)), // 添加延迟避免同时请求
-      delay(2000).then(() => scrapeIGA(productName)),
-    ]);
-
-    allProducts.push(...colesProducts, ...woolworthsProducts, ...igaProducts);
-
-    // 如果没有找到结果，返回模拟数据用于测试
-    if (allProducts.length === 0) {
-      console.log('No products found, returning mock data for testing');
-      return getMockData(productName);
+    // 使用Google Shopping API搜索
+    const products = await searchGoogle(productName);
+    
+    // 如果找到结果，缓存并返回
+    if (products.length > 0) {
+      setCachedData(cacheKey, products);
+      return products;
     }
-
-    return allProducts;
+    
+    // 如果没有找到结果，返回模拟数据（用于演示）
+    console.log('[Google Shopping] 未找到价格数据，返回模拟数据');
+    return getMockData(productName);
+    
   } catch (error) {
-    console.error('Scraping error:', error);
-    // 返回模拟数据用于开发测试
+    console.error('[Google Shopping] 搜索失败:', error);
+    
+    // 如果是配置错误，抛出异常让用户知道
+    if (error instanceof Error && (
+      error.message.includes('未配置') || 
+      error.message.includes('API Key') ||
+      error.message.includes('CX')
+    )) {
+      throw error;
+    }
+    
+    // 其他错误返回模拟数据
     return getMockData(productName);
   }
 }
 
-// 模拟数据（用于开发和测试）
+/**
+ * 模拟数据（用于演示和测试）
+ */
 function getMockData(productName: string): ScrapedProduct[] {
+  console.log('[Mock Data] 生成模拟价格数据');
+  
   return [
     {
       product_name: productName,
@@ -173,8 +328,8 @@ function getMockData(productName: string): ScrapedProduct[] {
       url: 'https://www.iga.com.au',
     },
     {
-      product_name: `${productName} - Similar Product`,
-      price: 6.00,
+      product_name: `${productName} - 2 Pack`,
+      price: 10.50,
       supplier: 'Coles',
       url: 'https://www.coles.com.au',
     },
