@@ -30,7 +30,7 @@ export interface Query {
 // 爬虫原始数据类型
 export interface ScrapedProduct {
   product_name: string;
-  price: number | string;
+  price: number;
   supplier: string;
   url?: string;
 }
