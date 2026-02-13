@@ -1,4 +1,4 @@
-// 商品价格数据类型
+// Product price data structure
 export interface SupplierData {
   name: string;
   price: number;
@@ -14,7 +14,7 @@ export interface PriceData {
   scraped_at: string;
 }
 
-// 查询状态类型
+// Query status types
 export type QueryStatus = 'pending' | 'scraping' | 'analyzing' | 'completed' | 'failed';
 
 export interface Query {
@@ -27,7 +27,7 @@ export interface Query {
   updated_at: string;
 }
 
-// 爬虫原始数据类型
+// Raw scraper data structure
 export interface ScrapedProduct {
   product_name: string;
   price: number;
@@ -35,7 +35,7 @@ export interface ScrapedProduct {
   url?: string;
 }
 
-// API响应类型
+// API response wrapper
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;

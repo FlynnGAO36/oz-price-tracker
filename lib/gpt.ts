@@ -5,7 +5,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// 使用GPT分析和过滤爬取的数据
+// Analyze and filter scraped product data using GPT
 export async function analyzeWithGPT(
   productName: string,
   scrapedData: ScrapedProduct[]
@@ -41,7 +41,7 @@ Return ONLY valid JSON in this exact format (no markdown, no code blocks, just r
 }`;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini', // 使用更经济的模型
+      model: 'gpt-4o-mini', // Using cost-effective model
       messages: [
         {
           role: 'system',
@@ -58,7 +58,7 @@ Return ONLY valid JSON in this exact format (no markdown, no code blocks, just r
 
     const responseText = completion.choices[0].message.content?.trim() || '';
     
-    // 清理可能的markdown格式
+    // Clean up potential markdown formatting
     const jsonText = responseText
       .replace(/```json\n?/g, '')
       .replace(/```\n?/g, '')
@@ -69,14 +69,14 @@ Return ONLY valid JSON in this exact format (no markdown, no code blocks, just r
   } catch (error) {
     console.error('GPT analysis error:', error);
     
-    // 如果GPT失败，使用简单的本地分析
+    // If GPT fails, use simple local analysis as fallback
     return fallbackAnalysis(productName, scrapedData);
   }
 }
 
-// 备用分析函数（当GPT API失败时使用）
+// Fallback analysis function when GPT API fails
 function fallbackAnalysis(productName: string, scrapedData: ScrapedProduct[]): PriceData {
-  // 简单的名称匹配过滤
+  // Simple name matching filter
   const filteredData = scrapedData.filter(item => {
     const itemName = item.product_name.toLowerCase();
     const searchName = productName.toLowerCase();

@@ -28,10 +28,10 @@ export default function LoginPage() {
       if (data.success) {
         router.push('/dashboard');
       } else {
-        setError(data.error || '登录失败');
+        setError(data.error || 'Login failed');
       }
     } catch (err) {
-      setError('网络错误，请重试');
+      setError('Network error, please try again');
     } finally {
       setLoading(false);
     }
@@ -42,10 +42,10 @@ export default function LoginPage() {
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            价格查询系统
+            Price Tracker
           </h1>
           <p className="text-gray-600">
-            澳大利亚零售商价格分析工具
+            Australian Retail Price Comparison Tool
           </p>
         </div>
 
@@ -55,7 +55,7 @@ export default function LoginPage() {
               htmlFor="password"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              密码
+              Password
             </label>
             <input
               id="password"
@@ -63,7 +63,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-gray-900"
-              placeholder="请输入密码"
+              placeholder="Enter password"
               required
               disabled={loading}
             />
@@ -80,13 +80,13 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? '登录中...' : '登录'}
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
         <div className="mt-6 text-center text-sm text-gray-500">
-          <p>提示：默认密码为 admin123</p>
-          <p className="mt-1">请在 .env.local 中修改 AUTH_PASSWORD</p>
+          <p>Hint: Default password is 123123</p>
+          <p className="mt-1">Change AUTH_PASSWORD in .env.local to use a custom password</p>
         </div>
       </div>
     </div>

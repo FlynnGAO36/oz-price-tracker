@@ -7,12 +7,12 @@ export async function POST() {
     
     return NextResponse.json({
       success: true,
-      data: { message: '已登出' },
+      data: { message: 'Logged out successfully' },
     });
   } catch (error) {
     console.error('Logout error:', error);
     return NextResponse.json(
-      { success: false, error: '登出失败' },
+      { success: false, error: 'Logout failed' },
       { status: 500 }
     );
   }

@@ -5,14 +5,14 @@ import { verifyToken } from '@/lib/auth';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 公开路径
+  // Public paths (no authentication required)
   const publicPaths = ['/login', '/api/auth/login'];
   
   if (publicPaths.some(path => pathname.startsWith(path))) {
     return NextResponse.next();
   }
 
-  // 检查认证
+  // Check authentication
   const token = request.cookies.get('auth_token')?.value;
 
   if (!token || !(await verifyToken(token))) {

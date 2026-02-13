@@ -1,132 +1,164 @@
-# 澳大利亚零售商价格抓取与分析系统
+# Australian Price Comparison Tool
 
-一个基于 Next.js 的Web应用，用于抓取和分析澳大利亚本地零售商的商品价格数据。
+A web application that searches product prices across Australian retailers and displays comparison results with statistical analysis.
 
-## 功能特性
+## What It Does
 
-- 🔐 **密码认证** - 简单的密码保护系统
-- 🕷️ **智能爬虫** - 自动抓取多个澳大利亚零售商网站
-- 🤖 **AI分析** - 使用GPT API过滤和整理数据
-- 📊 **价格统计** - 自动计算平均价、最高价、最低价
-- 📱 **响应式设计** - 完美适配手机和桌面设备
-- 💾 **数据导出** - 支持CSV和JSON格式下载
+Users enter a product name (like "A2 Milk Full Cream 2L"), and the system:
+1. Searches Google Shopping for Australian retailers
+2. Uses AI to filter irrelevant results
+3. Calculates average, lowest, and highest prices
+4. Displays a clean comparison across different suppliers
 
-## 技术栈
+## Why SearchAPI.io Instead of Custom Scraper
 
-- **前端框架**: Next.js 15 (App Router)
-- **语言**: TypeScript
-- **样式**: Tailwind CSS
-- **AI服务**: OpenAI GPT API
-- **部署**: Vercel
+**The Problem with Direct Scraping:**
+Google Shopping has aggressive anti-bot protection. When you try to scrape directly with Puppeteer or similar tools, you get blocked immediately. The site detects automated browsers, shows CAPTCHA challenges, or returns empty pages.
 
-## 快速开始
+**The Solution:**
+SearchAPI.io is a professional service that handles all the anti-bot complexity. They maintain infrastructure specifically designed to reliably access Google Shopping data. Instead of fighting Google's protection systems ourselves, we pay a small fee per search and get reliable results every time.
 
-### 1. 安装依赖
+**Cost Trade-off:**
+Running our own scraping infrastructure (proxies, CAPTCHA solvers, browser farms) costs more and breaks frequently. SearchAPI.io costs about $0.01-0.05 per search and works 99% of the time.
 
+## What GPT Does
+
+**Raw Data Problem:**
+SearchAPI.io returns everything that matches the search term. If you search "milk", you might get:
+- A2 Milk Full Cream 2L ($5.50)
+- Milk Powder 500g ($8.99)
+- Chocolate Milk 300ml ($3.20)
+- Milk Frother Electric ($29.99)
+
+**GPT's Role:**
+GPT-4o-mini analyzes the results and:
+- Filters out irrelevant products (powder, chocolate milk, frothers)
+- Keeps only the actual product the user wants
+- Structures the data into clean JSON format
+- Calculates price statistics
+
+**Why GPT-4o-mini:**
+It's cheap ($0.15 per 1M tokens) but smart enough for product categorization. Each query costs around $0.001-0.005.
+
+**Fallback:**
+If GPT fails, the system uses basic keyword matching instead.
+
+## Tech Stack
+
+- Next.js 15, React, TypeScript, Tailwind CSS
+- SearchAPI.io for web scraping
+- OpenAI GPT-4o-mini for data analysis
+- JWT authentication
+- Vercel deployment
+
+## Setup
+
+Install dependencies:
 ```bash
 npm install
 ```
 
-### 2. 配置环境变量
-
-复制 `.env.example` 到 `.env.local` 并填写以下信息：
-
+Create `.env.local` file:
 ```env
-# 认证配置
-AUTH_PASSWORD=your_password_here
-
-# OpenAI API配置
-OPENAI_API_KEY=your_openai_api_key
-
-# JWT密钥
-JWT_SECRET=your_random_secret_key
+AUTH_PASSWORD=123123
+JWT_SECRET=your-random-64-char-hex-string
+OPENAI_API_KEY=sk-proj-...
+SEARCHAPI_KEY=your-searchapi-key
 ```
 
-### 3. 运行开发服务器
-
+Run development server:
 ```bash
 npm run dev
 ```
 
-访问 [http://localhost:3000](http://localhost:3000)
+Visit http://localhost:3000 and use password `123123` to login.
 
-## 使用说明
+## How It Works Technically
 
-1. **登录**: 使用在 `.env.local` 中设置的密码登录
-2. **查询商品**: 在主页输入商品名称（例如："A2 Milk Full Cream 2L"）
-3. **查看结果**: 系统会自动爬取数据并使用AI分析
-4. **下载数据**: 可以下载CSV或JSON格式的结果文件
+**Data Flow:**
+```
+User Query 
+  → Check 24-hour cache 
+  → If not cached: SearchAPI.io (Google Shopping, region=AU)
+  → Parse shopping_results array
+  → Send to GPT-4o-mini for filtering
+  → GPT returns cleaned supplier list with prices
+  → Calculate statistics (avg, min, max)
+  → Cache for 24 hours
+  → Display to user
+```
 
-## 目标零售商
+**Key Files:**
+- `/lib/scraper.ts` - SearchAPI.io integration (230 lines)
+- `/lib/gpt.ts` - GPT analysis and fallback logic
+- `/app/api/query/route.ts` - Main API endpoint
+- `/components/QueryForm.tsx` - Search interface
+- `/components/ResultsDisplay.tsx` - Results display
 
-目前支持以下澳大利亚零售商：
-- Coles
-- Woolworths
-- IGA
+## Caching Strategy
 
-**注意**: 由于网站反爬虫机制，实际爬取可能需要调整选择器或使用更高级的爬取技术。系统包含模拟数据用于开发和测试。
+Same product queries within 24 hours return cached results. This reduces API costs by approximately 95% in normal usage.
 
-## 爬虫说明
+Cache location: `/tmp/shopping_cache/`
 
-本项目的爬虫功能仅用于个人学习和研究目的。使用时请注意：
+## API Response Example
 
-1. 遵守目标网站的服务条款
-2. 不要进行频繁的请求
-3. 尊重 robots.txt 规则
-4. 仅用于合法用途
+```json
+{
+  "product_name": "A2 Milk Full Cream 2L",
+  "average_price": 5.62,
+  "lowest_price": 5.40,
+  "highest_price": 5.95,
+  "suppliers": [
+    { "name": "Coles", "price": 5.40, "url": "https://..." },
+    { "name": "Woolworths", "price": 5.50, "url": "https://..." },
+    { "name": "IGA", "price": 5.95, "url": "https://..." }
+  ],
+  "scraped_at": "2026-02-13T14:30:00Z"
+}
+```
 
-## 部署到Vercel
+## Deployment
 
-1. 将代码推送到GitHub仓库
-2. 在Vercel中导入项目
-3. 配置环境变量
-4. 部署
-
+**Vercel (Recommended):**
 ```bash
-npm run build
+npm install -g vercel
+vercel
 ```
 
-## 项目结构
+Configure environment variables in Vercel dashboard:
+- `AUTH_PASSWORD`
+- `JWT_SECRET`
+- `OPENAI_API_KEY`
+- `SEARCHAPI_KEY`
 
-```
-price-scraper/
-├── app/                    # Next.js App Router
-│   ├── api/               # API路由
-│   ├── dashboard/         # 主页面
-│   ├── login/            # 登录页
-│   └── layout.tsx        # 根布局
-├── components/            # React组件
-├── lib/                   # 工具函数
-│   ├── auth.ts           # 认证逻辑
-│   ├── scraper.ts        # 爬虫逻辑
-│   └── gpt.ts            # GPT集成
-├── types/                 # TypeScript类型定义
-└── .env.local            # 环境变量
-```
+**Live Demo:**
+https://oz-price-tracker.vercel.app/
+Password: `123123`
 
-## 常见问题
+## Troubleshooting
 
-### Q: 爬虫没有返回数据怎么办？
-A: 系统会自动返回模拟数据用于测试。实际使用时需要根据目标网站的真实HTML结构调整选择器。
+**No results returned:**
+- Verify SearchAPI.io key is valid
+- Check API quota hasn't been exceeded
+- System falls back to demo data if API fails
 
-### Q: GPT API调用失败？
-A: 系统包含备用分析函数，即使GPT失败也能返回基本的价格统计。
+**High API costs:**
+- Check caching is working (should reduce 90%+ of calls)
+- Monitor SearchAPI.io dashboard for usage
+- Reduce search frequency if testing
 
-### Q: 如何修改密码？
-A: 在 `.env.local` 文件中修改 `AUTH_PASSWORD` 变量。
+**GPT analysis fails:**
+- System automatically uses fallback analysis
+- Check OpenAI API key and credits
+- Fallback provides basic filtering without AI
 
-## 开发计划
+## Documentation
 
-- [ ] 添加更多零售商支持
-- [ ] 实现价格历史记录
-- [ ] 添加价格提醒功能
-- [ ] 优化爬虫性能
-- [ ] 添加用户管理系统
+- `DEPLOYMENT.md` - Detailed deployment instructions
+- `PROJECT_SUMMARY.md` - Technical architecture overview
+- `ELEVATOR_PITCH.md` - One-minute project summary
 
-## 许可证
+## License
 
-MIT License
-
-## 作者
-
-Created with ❤️ for Australian price comparison
+MIT

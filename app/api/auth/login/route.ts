@@ -8,33 +8,33 @@ export async function POST(request: NextRequest) {
 
     if (!password) {
       return NextResponse.json(
-        { success: false, error: '请输入密码' },
+        { success: false, error: 'Password is required' },
         { status: 400 }
       );
     }
 
-    // 验证密码
+    // Verify password
     if (!verifyPassword(password)) {
       return NextResponse.json(
-        { success: false, error: '密码错误' },
+        { success: false, error: 'Invalid password' },
         { status: 401 }
       );
     }
 
-    // 创建token
+    // Create token
     const token = await createToken();
 
-    // 设置cookie
+    // Set cookie
     await setAuthCookie(token);
 
     return NextResponse.json({
       success: true,
-      data: { message: '登录成功' },
+      data: { message: 'Login successful' },
     });
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
-      { success: false, error: '登录失败' },
+      { success: false, error: 'Login failed' },
       { status: 500 }
     );
   }

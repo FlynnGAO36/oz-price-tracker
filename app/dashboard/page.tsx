@@ -34,11 +34,11 @@ export default function DashboardPage() {
         if (response.status === 401) {
           router.push('/login');
         } else {
-          setError(data.error || '查询失败');
+          setError(data.error || 'Query failed');
         }
       }
     } catch (err) {
-      setError('网络错误，请重试');
+      setError('Network error, please try again');
     } finally {
       setLoading(false);
     }
@@ -76,11 +76,11 @@ export default function DashboardPage() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       } else {
-        alert('下载失败');
+        alert('Download failed');
       }
     } catch (err) {
       console.error('Download error:', err);
-      alert('下载失败');
+      alert('Download failed');
     }
   };
 
@@ -92,17 +92,17 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                澳大利亚商品价格查询
+                Product Price Comparison
               </h1>
               <p className="text-sm text-gray-600 mt-1">
-                实时抓取零售商价格数据
+                Real-time Australian retail price tracker
               </p>
             </div>
             <button
               onClick={handleLogout}
               className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
             >
-              登出
+              Logout
             </button>
           </div>
         </div>
@@ -123,10 +123,10 @@ export default function DashboardPage() {
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                 <div className="text-center">
                   <p className="text-lg font-medium text-gray-900">
-                    正在查询价格...
+                    Querying prices...
                   </p>
                   <p className="text-sm text-gray-600 mt-1">
-                    正在爬取数据并使用AI分析，请稍候
+                    Scraping data and analyzing with AI, please wait
                   </p>
                 </div>
               </div>
@@ -152,7 +152,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-red-800">
-                    查询出错
+                    Query Error
                   </h3>
                   <div className="mt-2 text-sm text-red-700">{error}</div>
                 </div>

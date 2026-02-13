@@ -1,139 +1,149 @@
-# 部署指南
+# Deployment Guide
 
-本文档提供详细的部署步骤，帮助您将项目部署到Vercel。
+This document provides detailed steps to deploy the Australian Retail Price Tracker to Vercel.
 
-## 部署前准备
+## Pre-Deployment Setup
 
-### 1. 准备OpenAI API密钥
+### 1. Prepare OpenAI API Key
 
-1. 访问 [OpenAI Platform](https://platform.openai.com/)
-2. 创建账户并添加付费方式
-3. 在API Keys页面创建新的API密钥
-4. 保存密钥（只会显示一次）
+1. Visit [OpenAI Platform](https://platform.openai.com/)
+2. Create an account and add payment method
+3. Go to API Keys page and create a new API key
+4. Save the key (it will only be shown once)
 
-### 2. 生成JWT密钥
+### 2. Generate JWT Secret
 
-使用以下命令生成随机密钥：
+Generate a random secret using one of these commands:
 
 ```bash
-# 使用Node.js
+# Using Node.js
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
-# 或使用OpenSSL
+# Or using OpenSSL
 openssl rand -hex 32
 ```
 
-## 部署到Vercel
+### 3. Get SearchAPI.io Key
 
-### 方法1: 通过Git部署（推荐）
+1. Visit [SearchAPI.io](https://www.searchapi.io/)
+2. Sign up and verify email
+3. Create an API key from dashboard
+4. Save the key for environment variables
 
-1. **初始化Git仓库**
+## Deploying to Vercel
+
+### Method 1: Deploy via Git (Recommended)
+
+1. **Initialize Git Repository**
 
 ```bash
-cd price-scraper
+cd oz-price-tracker
 git init
 git add .
 git commit -m "Initial commit"
 ```
 
-2. **推送到GitHub**
+2. **Push to GitHub**
 
 ```bash
-# 在GitHub上创建新仓库，然后：
-git remote add origin https://github.com/你的用户名/price-scraper.git
+# Create new repository on GitHub, then:
+git remote add origin https://github.com/your-username/oz-price-tracker.git
 git branch -M main
 git push -u origin main
 ```
 
-3. **在Vercel中导入**
+3. **Import to Vercel**
 
-   - 访问 [Vercel](https://vercel.com/)
-   - 点击 "New Project"
-   - 从GitHub导入你的仓库
-   - 配置环境变量（见下文）
-   - 点击 "Deploy"
+   - Visit [Vercel](https://vercel.com/)
+   - Click "New Project"
+   - Import your repository from GitHub
+   - Configure environment variables (see below)
+   - Click "Deploy"
 
-### 方法2: 使用Vercel CLI
+### Method 2: Using Vercel CLI
 
-1. **安装Vercel CLI**
+1. **Install Vercel CLI**
 
 ```bash
 npm install -g vercel
 ```
 
-2. **登录Vercel**
+2. **Login to Vercel**
 
 ```bash
 vercel login
 ```
 
-3. **部署**
+3. **Deploy**
 
 ```bash
-cd price-scraper
+cd oz-price-tracker
 vercel
 ```
 
-4. **配置环境变量**
+4. **Add Environment Variables**
 
 ```bash
 vercel env add AUTH_PASSWORD
 vercel env add OPENAI_API_KEY
 vercel env add JWT_SECRET
+vercel env add SEARCHAPI_KEY
 ```
 
-5. **重新部署**
+5. **Deploy to Production**
 
 ```bash
 vercel --prod
 ```
 
-## 环境变量配置
+## Environment Variables Configuration
 
-在Vercel项目的Settings > Environment Variables中添加以下变量：
+Add the following variables in Vercel Project Settings > Environment Variables:
 
-| 变量名 | 描述 | 示例 |
-|--------|------|------|
-| `AUTH_PASSWORD` | 登录密码 | `your_secure_password` |
-| `OPENAI_API_KEY` | OpenAI API密钥 | `sk-...` |
-| `JWT_SECRET` | JWT签名密钥 | 32字节随机hex字符串 |
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `AUTH_PASSWORD` | Login password | `your_secure_password` |
+| `OPENAI_API_KEY` | OpenAI API key | `sk-...` |
+| `JWT_SECRET` | JWT signing secret | `32-byte hex string` |
+| `SEARCHAPI_KEY` | SearchAPI.io API key | `TjHQAVrh...` |
 
-**注意**: 
-- 确保 `OPENAI_API_KEY` 和 `JWT_SECRET` 保密
-- `AUTH_PASSWORD` 建议使用强密码
+**Important Notes**:
+- Keep `OPENAI_API_KEY` and `JWT_SECRET` secret
+- Use a strong `AUTH_PASSWORD` (not just "123123" in production)
+- Never commit these values to Git
 
-## 部署后验证
+## Post-Deployment Verification
 
-1. **访问部署的网站**
-   - Vercel会提供一个URL，如 `https://your-project.vercel.app`
+1. **Visit Your Deployment**
+   - Vercel provides a URL like `https://your-project.vercel.app`
 
-2. **测试登录**
-   - 使用配置的密码登录
+2. **Test Login**
+   - Use the configured password to log in
 
-3. **测试查询功能**
-   - 输入商品名称（如 "A2 Milk Full Cream 2L"）
-   - 查看是否正常返回结果
+3. **Test Query Functionality**
+   - Enter a product name (e.g., "A2 Milk Full Cream 2L")
+   - Verify results are returned correctly
 
-4. **测试下载功能**
-   - 下载CSV和JSON文件
-   - 验证数据格式正确
+4. **Test Download Functionality**
+   - Download CSV and JSON files
+   - Verify data format and completeness
 
-## 自定义域名（可选）
+## Custom Domain Setup (Optional)
 
-1. 在Vercel项目的Settings > Domains中
-2. 添加你的自定义域名
-3. 按照提示配置DNS记录
-4. 等待DNS传播（通常几分钟到几小时）
+1. In Vercel Project > Settings > Domains
+2. Add your custom domain
+3. Follow DNS configuration instructions
+4. Wait for DNS propagation (usually minutes to hours)
 
-## 性能优化建议
+## Performance Optimization
 
-### 1. 启用Vercel Analytics
+### 1. Enable Vercel Analytics
 
 ```bash
 npm install @vercel/analytics
 ```
 
-在 `app/layout.tsx` 中添加：
+Add to `app/layout.tsx`:
 
 ```tsx
 import { Analytics } from '@vercel/analytics/react';
@@ -150,9 +160,9 @@ export default function RootLayout({ children }) {
 }
 ```
 
-### 2. 配置缓存
+### 2. Configure Caching
 
-在 `next.config.ts` 中：
+In `next.config.ts`:
 
 ```typescript
 const nextConfig: NextConfig = {
@@ -172,36 +182,36 @@ const nextConfig: NextConfig = {
 };
 ```
 
-### 3. 优化图片
+### 3. Optimize Images
 
-使用Next.js的Image组件自动优化图片。
+Use Next.js Image component for automatic optimization.
 
-## 监控和维护
+## Monitoring and Maintenance
 
-### 查看日志
+### View Logs
 
-在Vercel Dashboard中：
-- 点击你的项目
-- 进入 Deployments
-- 点击具体的部署
-- 查看 Functions 标签页的日志
+In Vercel Dashboard:
+- Click your project
+- Go to Deployments
+- Click specific deployment
+- View logs in Functions tab
 
-### 监控API使用
+### Monitor API Usage
 
-**OpenAI使用量**
-- 访问 OpenAI Dashboard
-- 查看Usage页面
+**OpenAI Usage**
+- Visit OpenAI Dashboard
+- Check Usage page
 
-### 错误追踪
+### Error Tracking
 
-考虑集成错误追踪服务：
+Consider integrating error tracking services:
 - Sentry
 - LogRocket
 - Datadog
 
-## 更新部署
+## Updating Deployments
 
-### 通过Git
+### Via Git
 
 ```bash
 git add .
@@ -209,79 +219,83 @@ git commit -m "Update message"
 git push
 ```
 
-Vercel会自动检测到推送并重新部署。
+Vercel automatically detects pushes and redeploys.
 
-### 通过CLI
+### Via CLI
 
 ```bash
 vercel --prod
 ```
 
-## 回滚部署
+## Rolling Back Deployments
 
-如果新部署有问题：
+If new deployment has issues:
 
-1. 在Vercel Dashboard中找到之前的部署
-2. 点击右侧的"..."菜单
-3. 选择 "Promote to Production"
+1. Find the previous deployment in Vercel Dashboard
+2. Click the "..." menu
+3. Select "Promote to Production"
 
-## 常见问题解决
+## Troubleshooting
 
-### 部署失败
+### Deployment Fails
 
-1. 检查构建日志
-2. 确保所有环境变量已正确配置
-3. 本地运行 `npm run build` 测试
+1. Check build logs
+2. Verify all environment variables are configured
+3. Run `npm run build` locally to test
 
-### API调用失败
+### API Calls Fail
 
-1. 检查环境变量是否正确
-2. 查看Function日志
-3. 确认API密钥有效且有足够配额
+1. Verify environment variables
+2. Check Function logs
+3. Confirm API keys are valid and have sufficient quota
 
-### 性能问题
+### Performance Issues
 
-1. 启用Vercel Analytics分析
-2. 优化爬虫请求频率
-3. 考虑添加Redis缓存层
+1. Enable Vercel Analytics
+2. Optimize scraper request frequency
+3. Consider adding Redis caching layer
 
-## 安全建议
+## Security Recommendations
 
-1. **定期更新依赖**
+1. **Keep Dependencies Updated**
    ```bash
    npm audit
    npm update
    ```
 
-2. **监控异常登录尝试**
-   - 可以添加登录尝试限制
+2. **Monitor Login Attempts**
+   - Can add rate limiting to reduce brute force attacks
 
-3. **保护敏感信息**
-   - 不要将 `.env.local` 提交到Git
-   - 定期轮换API密钥
+3. **Protect Sensitive Information**
+   - Never commit `.env.local` to Git
+   - Rotate API keys regularly
 
-4. **启用Vercel的安全功能**
+4. **Enable Vercel Security Features**
    - Deployment Protection
-   - IP Whitelist（如需要）
+   - IP Whitelist (if needed)
 
-## 成本估算
+## Cost Estimation
 
 ### Vercel
-- Hobby Plan: 免费
-- Pro Plan: $20/月（如需要更多功能）
+- Hobby Plan: Free
+- Pro Plan: $20/month (for advanced features)
 
 ### OpenAI
-- 按使用量计费
+- Pay per usage
 - GPT-4o-mini: $0.15 / 1M input tokens
-- 估算: 每次查询约 $0.001-0.005
+- Estimate: ~$0.001-0.005 per query
 
-## 技术支持
+### SearchAPI.io
+- Pay per search
+- Estimate: $0.01-0.05 per request depending on usage
 
-如有问题：
-1. 查看项目README.md
-2. 检查Vercel文档
-3. 查看项目的GitHub Issues
+## Support
+
+For issues:
+1. Check project README.md
+2. Review Vercel documentation
+3. Check project GitHub Issues
 
 ---
 
-**祝部署顺利！** 🚀
+**Happy Deployment!** 🚀

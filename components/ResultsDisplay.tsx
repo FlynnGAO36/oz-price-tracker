@@ -16,7 +16,7 @@ export default function ResultsDisplay({ data, onDownload }: ResultsDisplayProps
           {data.product_name}
         </h2>
         <p className="text-sm text-gray-500">
-          抓取时间: {new Date(data.scraped_at).toLocaleString('zh-CN')}
+          Fetched at: {new Date(data.scraped_at).toLocaleString('en-US')}
         </p>
       </div>
 
@@ -25,7 +25,7 @@ export default function ResultsDisplay({ data, onDownload }: ResultsDisplayProps
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">平均价格</p>
+              <p className="text-sm font-medium text-gray-600">Average Price</p>
               <p className="text-3xl font-bold text-blue-600 mt-2">
                 ${data.average_price.toFixed(2)}
               </p>
@@ -51,7 +51,7 @@ export default function ResultsDisplay({ data, onDownload }: ResultsDisplayProps
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">最高价格</p>
+              <p className="text-sm font-medium text-gray-600">Highest Price</p>
               <p className="text-3xl font-bold text-red-600 mt-2">
                 ${data.highest_price.toFixed(2)}
               </p>
@@ -77,7 +77,7 @@ export default function ResultsDisplay({ data, onDownload }: ResultsDisplayProps
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">最低价格</p>
+              <p className="text-sm font-medium text-gray-600">Lowest Price</p>
               <p className="text-3xl font-bold text-green-600 mt-2">
                 ${data.lowest_price.toFixed(2)}
               </p>
@@ -105,7 +105,7 @@ export default function ResultsDisplay({ data, onDownload }: ResultsDisplayProps
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">
-            供货商列表 ({data.suppliers.length})
+            Suppliers ({data.suppliers.length})
           </h3>
         </div>
 
@@ -115,13 +115,13 @@ export default function ResultsDisplay({ data, onDownload }: ResultsDisplayProps
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  零售商
+                  Retailer
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  价格
+                  Price
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  链接
+                  Link
                 </th>
               </tr>
             </thead>
@@ -146,10 +146,10 @@ export default function ResultsDisplay({ data, onDownload }: ResultsDisplayProps
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:text-blue-800 hover:underline"
                       >
-                        查看商品
+                        View Product
                       </a>
                     ) : (
-                      <span className="text-gray-400">无链接</span>
+                      <span className="text-gray-400">No Link</span>
                     )}
                   </td>
                 </tr>
@@ -177,7 +177,7 @@ export default function ResultsDisplay({ data, onDownload }: ResultsDisplayProps
                   rel="noopener noreferrer"
                   className="text-sm text-blue-600 hover:text-blue-800 hover:underline inline-block"
                 >
-                  查看商品 →
+                  View Product →
                 </a>
               )}
             </div>
@@ -188,24 +188,24 @@ export default function ResultsDisplay({ data, onDownload }: ResultsDisplayProps
       {/* Download Buttons */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          下载数据
+          Download Data
         </h3>
         <div className="flex flex-col sm:flex-row gap-4">
           <button
             onClick={() => onDownload('csv')}
             className="flex-1 sm:flex-none px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition"
           >
-            下载 CSV
+            Download CSV
           </button>
           <button
             onClick={() => onDownload('json')}
             className="flex-1 sm:flex-none px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition"
           >
-            下载 JSON
+            Download JSON
           </button>
         </div>
         <p className="text-sm text-gray-500 mt-3">
-          下载包含所有价格数据和统计信息的文件
+          Download files containing all price data and statistics
         </p>
       </div>
     </div>
